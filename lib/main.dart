@@ -1,117 +1,358 @@
+import 'dart:math';
+
+import 'package:filepicker_windows/filepicker_windows.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:provider/provider.dart';
+
+import 'photo.dart';
+import 'ruler_arrow.dart';
 
 void main() {
-  runApp(MyApp());
+  // if (bool.fromEnvironment('dart.vm.product')) {
+  //   debugPrint = (String message, {int wrapWidth}) {};
+  // }
+
+  runApp(App());
 }
 
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-        // This makes the visual density adapt to the platform that you run
-        // the app on. For desktop platforms, the controls will be smaller and
-        // closer together (more dense) than on mobile platforms.
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ValueNotifier<Photo>>(
+          create: (_) => ValueNotifier(null),
+        ),
+        ChangeNotifierProvider<ValueNotifier<double>>(
+          create: (_) => ValueNotifier(1.0),
+        ),
+        ChangeNotifierProvider<ValueNotifier<List<RulerArrow>>>(
+          create: (_) => ValueNotifier([
+            RulerArrow(
+              const Point(.2, .4),
+              const Point(.6, .5),
+            )
+          ]),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          primarySwatch: Colors.grey,
+          backgroundColor: Colors.grey.shade900,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+        ),
+        home: Home(),
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
+class Home extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+      backgroundColor: Theme.of(context).backgroundColor,
+      body: Consumer<ValueNotifier<Photo>>(
+        builder: (context, photo, _) {
+          final _editorKey = GlobalKey();
+
+          if (photo.value == null) {
+            return Center(
+              child: RaisedButton.icon(
+                onPressed: () async {
+                  final picker = FilePicker();
+                  picker.title = 'Select an image';
+                  picker.filterSpecification = {'All Files (*.*)': '*.*'};
+
+                  final file = picker.getFile();
+
+                  if (file == null) return;
+
+                  photo.value = await Photo.fromList(
+                    await file.readAsBytes(),
+                  );
+                },
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 20,
+                ),
+                icon: const Icon(Icons.photo),
+                label: const Text(
+                  "Open Image",
+                  textScaleFactor: 1.2,
+                ),
+              ),
+            );
+          }
+
+          const padding = EdgeInsets.all(20.0);
+
+          return ConstrainedBox(
+            constraints: const BoxConstraints.expand(),
+            child: InteractiveViewer(
+              maxScale: 100,
+              minScale: 0.0001,
+              child: Center(
+                child: Padding(
+                  padding: padding,
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.zero,
+                    elevation: 12,
+                    child: AspectRatio(
+                      aspectRatio: photo.value.size.aspectRatio,
+                      child: RulerEditor(
+                        key: _editorKey,
+                        photo: photo.value,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
+    );
+  }
+}
+
+// class Home extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     final _controller = PhotoViewController();
+//     final _globalKey = GlobalKey();
+
+//     return Scaffold(
+//       backgroundColor: Theme.of(context).backgroundColor,
+//       body: Consumer<ValueNotifier<Photo>>(
+//         builder: (context, photo, _) {
+//           if (photo.value == null) {
+//             return Center(
+//               child: RaisedButton.icon(
+//                 onPressed: () async {
+//                   final picker = FilePicker();
+//                   picker.title = 'Select an image';
+//                   picker.filterSpecification = {'All Files (*.*)': '*.*'};
+
+//                   final file = picker.getFile();
+
+//                   if (file == null) return;
+
+//                   photo.value = await Photo.fromList(
+//                     await file.readAsBytes(),
+//                   );
+//                 },
+//                 padding: const EdgeInsets.symmetric(
+//                   horizontal: 32,
+//                   vertical: 20,
+//                 ),
+//                 icon: const Icon(Icons.photo),
+//                 label: const Text(
+//                   "Open Image",
+//                   textScaleFactor: 1.2,
+//                 ),
+//               ),
+//             );
+//           }
+
+//           return LayoutBuilder(builder: (context, constraints) {
+//             final screenSize = Offset(
+//               constraints.maxWidth,
+//               constraints.maxHeight,
+//             );
+//             Offset mousePosition = Offset.zero;
+
+//             return MouseRegion(
+//               onHover: (event) {
+//                 mousePosition = event.position;
+//               },
+//               child: Listener(
+//                 onPointerSignal: (pointerSignal) async {
+//                   if (pointerSignal is PointerScrollEvent) {
+//                     final sign = pointerSignal.scrollDelta.dy.sign;
+//                     final divisor = 1 + sign / 10;
+//                     final newScale = _controller.scale / divisor;
+//                     final cursorPosition = -(mousePosition - screenSize / 2);
+//                     final newPosition =
+//                         (_controller.position + cursorPosition) / divisor -
+//                             cursorPosition;
+
+//                     _controller.updateMultiple(
+//                       scale: newScale,
+//                       position: newPosition,
+//                     );
+//                   }
+//                 },
+//                 child: PhotoView.customChild(
+//                   key: _globalKey,
+//                   childSize: photo.value.size,
+//                   backgroundDecoration: const BoxDecoration(
+//                     color: Colors.transparent,
+//                   ),
+//                   controller: _controller,
+//                   // childSize: image.value.item2,
+//                   child: Center(
+//                     child: AspectRatio(
+//                       aspectRatio: photo.value.size.aspectRatio,
+//                       child: Material(
+//                         color: Colors.transparent,
+//                         borderRadius: BorderRadius.zero,
+//                         elevation: 12,
+//                         child: Consumer2<ValueNotifier<double>,
+//                             ValueNotifier<List<RulerArrow>>>(
+//                           builder: (context, scale, arrows, _) {
+//                             return CustomPaint(
+//                               size: photo.value.size,
+//                               isComplex: true,
+//                               willChange: true,
+//                               painter: PhotoPainter(
+//                                 photo.value,
+//                                 arrows.value,
+//                                 scale.value,
+//                               ),
+//                             );
+//                           },
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             );
+//           });
+//         },
+//       ),
+//     );
+//   }
+// }
+
+class RulerEditor extends StatefulWidget {
+  final Photo photo;
+
+  const RulerEditor({Key key, this.photo}) : super(key: key);
+
+  @override
+  _RulerEditorState createState() => _RulerEditorState();
+}
+
+class _RulerEditorState extends State<RulerEditor> {
+  @override
+  Widget build(BuildContext context) {
+    return Stack(children: [
+      Expanded(
+        child: Image.memory(
+          widget.photo.bytes,
+          filterQuality: FilterQuality.high,
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      Expanded(
+        child: Builder(builder: (context) {
+          return Stack(
+            children: context
+                .watch<ValueNotifier<List<RulerArrow>>>()
+                .value
+                .asMap()
+                .entries
+                .map(
+                  arrowBuilder,
+                )
+                .toList(),
+          );
+        }),
+      ),
+    ]);
+
+    // return CustomPaint(
+    //   isComplex: true,
+    //   willChange: true,
+    //   painter: PhotoPainter(
+    //     photo: widget.photo,
+    //     arrows: Provider.of<ValueNotifier<List<RulerArrow>>>(
+    //       context,
+    //       listen: false,
+    //     ),
+    //     scale: Provider.of<ValueNotifier<double>>(
+    //       context,
+    //       listen: false,
+    //     ),
+    //   ),
+    // );
+  }
+
+  Widget arrowBuilder(MapEntry<int, RulerArrow> arrow) {
+    final startOffset = Offset(
+      arrow.value.start.x,
+      arrow.value.start.y,
+    );
+    final endOffset = Offset(
+      arrow.value.end.x,
+      arrow.value.end.y,
+    );
+
+    final rect = Rect.fromPoints(
+      startOffset,
+      endOffset,
+    );
+
+    return FractionallySizedBox(
+      child: AnimatedAlign(
+        key: ValueKey(arrow.key),
+        alignment: Alignment(rect.left, rect.top),
+        duration: const Duration(milliseconds: 250),
+        child: const ColoredBox(
+          color: Colors.pinkAccent,
+          child: SizedBox.expand(),
+        ),
+      ),
     );
   }
+}
+
+class PhotoPainter extends CustomPainter {
+  final Photo photo;
+  final ValueNotifier<List<RulerArrow>> arrows;
+  final ValueNotifier<double> scale;
+
+  PhotoPainter({
+    @required this.photo,
+    @required this.arrows,
+    @required this.scale,
+  })  : assert(photo != null),
+        assert(arrows != null),
+        assert(scale != null),
+        super(repaint: Listenable.merge([arrows, scale]));
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    print(size);
+
+    paintImage(
+      canvas: canvas,
+      rect: Rect.fromLTWH(0, 0, size.width, size.height),
+      image: photo.image,
+      filterQuality: FilterQuality.high,
+    );
+
+    final arrowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..color = Colors.indigo;
+
+    for (final arrow in arrows.value) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(arrow.start.x, arrow.start.y)
+          ..lineTo(arrow.end.x, arrow.end.y),
+        arrowPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(PhotoPainter oldDelegate) => true;
 }
