@@ -239,6 +239,8 @@ class ArrowPainter extends CustomPainter {
           .toList(),
     );
 
+    // Draw hitbox
+
     // canvas
     //   ..drawPath(
     //     _hitTestPath,
