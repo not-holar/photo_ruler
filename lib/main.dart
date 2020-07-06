@@ -31,7 +31,7 @@ class App extends StatelessWidget {
         ChangeNotifierProvider<ValueNotifier<List<RulerArrow>>>(
           create: (_) => ValueNotifier([
             RulerArrow(
-              const Point(20, 4),
+              const Point(800, 4),
               const Point(600, 500),
             )
           ]),
@@ -161,15 +161,45 @@ class _RulerEditorState extends State<RulerEditor> {
   }
 
   Widget arrowBuilder(int index, RulerArrow arrow, double scale) {
-    return CustomPaint(
+    return GestureDetector(
       key: ValueKey(index),
-      painter: ArrowPainter(
-        arrow: arrow,
-        scale: scale,
-        imageSize: widget.photo.size,
+      onTap: () => print('yay'),
+      child: CustomPaint(
+        key: ValueKey(index),
+        painter: ArrowPainter(
+          arrow: arrow,
+          scale: scale,
+          imageSize: widget.photo.size,
+        ),
       ),
     );
   }
+}
+
+/// Rotates a [Point] around (0, 0)
+Point<double> rotatePoint(Point<double> point, num radians) {
+  return Point(
+    point.x * cos(radians) - point.y * sin(radians),
+    point.x * sin(radians) + point.y * cos(radians),
+  );
+}
+
+/// Rotates a [Rect] around (0, 0)
+List<Point<double>> rotateRect(Rect rect, num radians) {
+  return [rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight]
+      .map((point) => Point(point.dx, point.dy))
+      .map((point) => rotatePoint(point, radians))
+      .toList();
+}
+
+Path pathFromPoints(List<Point<double>> points) {
+  final path = Path()..moveTo(points[0].x, points[0].y);
+
+  for (final point in points.reversed) {
+    path.moveTo(point.x, point.y);
+  }
+
+  return path;
 }
 
 class ArrowPainter extends CustomPainter {
@@ -194,19 +224,31 @@ class ArrowPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    print(arrow);
+    final renderScale = size.width / imageSize.width;
 
-    final renderScale = imageSize.width / size.width;
+    final scaledStart = arrow.start * renderScale;
+    final scaledEnd = arrow.end * renderScale;
 
-    _hitTestPath = Path()
-      ..moveTo(
-        arrow.start.x * renderScale,
-        arrow.start.y * renderScale,
-      )
-      ..lineTo(
-        arrow.end.x * renderScale,
-        arrow.end.y * renderScale,
-      );
+    final rect = Rect.fromLTWH(0, 0, 1, arrow.length * renderScale).inflate(4);
+
+    _hitTestPath = pathFromPoints(
+      rotateRect(rect, arrow.angle)
+          .map(
+            (point) => point + scaledStart,
+          )
+          .toList(),
+    );
+
+    print(rect);
+    print(rotateRect(rect, -arrow.angle));
+
+    print(
+      rotateRect(rect, -arrow.angle)
+          .map(
+            (point) => point + scaledStart,
+          )
+          .toList(),
+    );
 
     canvas
       ..drawPath(
@@ -224,14 +266,8 @@ class ArrowPainter extends CustomPainter {
       );
 
     final line = Path()
-      ..moveTo(
-        arrow.start.x * renderScale,
-        arrow.start.y * renderScale,
-      )
-      ..lineTo(
-        arrow.end.x * renderScale,
-        arrow.end.y * renderScale,
-      );
+      ..moveTo(scaledStart.x, scaledStart.y)
+      ..lineTo(scaledEnd.x, scaledEnd.y);
 
     canvas.drawPath(
       line,
@@ -246,11 +282,6 @@ class ArrowPainter extends CustomPainter {
       scale != oldDelegate.scale;
 
   @override
-  bool hitTest(Offset position) {
-    print(
-      (_hitTestPath != null) ? _hitTestPath.contains(position) : false,
-    );
-
-    return false;
-  }
+  bool hitTest(Offset position) =>
+      (_hitTestPath != null) && _hitTestPath.contains(position);
 }
