@@ -28,13 +28,11 @@ class App extends StatelessWidget {
         ChangeNotifierProvider<ValueNotifier<double>>(
           create: (_) => ValueNotifier(1.0),
         ),
-        ChangeNotifierProvider<ValueNotifier<List<RulerArrow>>>(
-          create: (_) => ValueNotifier([
-            RulerArrow(
-              const Point(800, 4),
-              const Point(600, 500),
-            )
-          ]),
+        ChangeNotifierProvider<ValueNotifier<int>>(
+          create: (_) => ValueNotifier(null),
+        ),
+        ChangeNotifierProvider<RulerList>(
+          create: (_) => RulerList(),
         ),
       ],
       child: MaterialApp(
@@ -44,6 +42,7 @@ class App extends StatelessWidget {
           primarySwatch: Colors.grey,
           backgroundColor: Colors.grey.shade900,
           visualDensity: VisualDensity.adaptivePlatformDensity,
+          canvasColor: const Color(0xff121212),
         ),
         home: Home(),
       ),
@@ -91,30 +90,50 @@ class Home extends StatelessWidget {
 
           const padding = EdgeInsets.all(20.0);
 
-          return ConstrainedBox(
-            constraints: const BoxConstraints.expand(),
-            child: InteractiveViewer(
-              maxScale: 100,
-              minScale: 0.0001,
-              child: Center(
-                child: Padding(
-                  padding: padding,
-                  child: Material(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.zero,
-                    elevation: 12,
-                    child: AspectRatio(
-                      aspectRatio: photo.value.size.aspectRatio,
-                      child: RulerEditor(
-                        key: _editorKey,
-                        photo: photo.value,
+          return Column(children: [
+            Expanded(
+              child: InteractiveViewer(
+                maxScale: 100,
+                minScale: 0.0001,
+                child: Center(
+                  child: Padding(
+                    padding: padding,
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.zero,
+                      elevation: 12,
+                      child: AspectRatio(
+                        aspectRatio: photo.value.size.aspectRatio,
+                        child: RulerEditor(
+                          key: _editorKey,
+                          photo: photo.value,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          );
+            Material(
+              color: Theme.of(context).canvasColor,
+              elevation: 20,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                child: Builder(builder: (context) {
+                  return Row(children: [
+                    IconButton(
+                      onPressed: () {
+                        final rulers = context.read<RulerList>();
+                        // TODO
+                      },
+                      icon: const Icon(Icons.delete_outline),
+                    )
+                  ]);
+                }),
+              ),
+            ),
+          ]);
         },
       ),
     );
@@ -146,8 +165,8 @@ class _RulerEditorState extends State<RulerEditor> {
           return Stack(
             fit: StackFit.expand,
             children: context
-                .watch<ValueNotifier<List<RulerArrow>>>()
-                .value
+                .watch<RulerList>()
+                .items
                 .asMap()
                 .entries
                 .map(
@@ -160,17 +179,27 @@ class _RulerEditorState extends State<RulerEditor> {
     );
   }
 
-  Widget arrowBuilder(int index, RulerArrow arrow, double scale) {
+  Widget arrowBuilder(
+    int index,
+    ValueNotifier<RulerArrow> arrow,
+    double scale,
+  ) {
     return GestureDetector(
       key: ValueKey(index),
       onTap: () => print('yay'),
-      child: CustomPaint(
+      child: ValueListenableBuilder(
         key: ValueKey(index),
-        painter: ArrowPainter(
-          arrow: arrow,
-          scale: scale,
-          imageSize: widget.photo.size,
-        ),
+        valueListenable: arrow,
+        builder: (context, RulerArrow arrow, _) {
+          return CustomPaint(
+            key: ValueKey(index),
+            painter: ArrowPainter(
+              arrow: arrow,
+              scale: scale,
+              imageSize: widget.photo.size,
+            ),
+          );
+        },
       ),
     );
   }

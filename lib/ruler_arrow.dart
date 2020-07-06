@@ -1,8 +1,7 @@
-// import 'dart:collection';
-
+import 'dart:collection';
 import 'dart:math';
 
-// import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 
 class RulerArrow {
   final Point<double> start;
@@ -28,8 +27,19 @@ double angleBetween(Point<double> start, Point<double> end) {
   return atan2(relative.x, relative.y);
 }
 
-// class RulerList with ChangeNotifier {
-//   List<RulerArrow> _items = [];
+class RulerList with ChangeNotifier {
+  final List<ValueNotifier<RulerArrow>> _items = [];
 
-//   UnmodifiableListView<RulerArrow> get items => UnmodifiableListView(_items);
-// }
+  UnmodifiableListView<ValueNotifier<RulerArrow>> get items =>
+      UnmodifiableListView(_items);
+
+  void add(RulerArrow value) {
+    _items.add(ValueNotifier(value));
+    notifyListeners();
+  }
+
+  void remove(int index) {
+    _items.removeAt(index);
+    notifyListeners();
+  }
+}
