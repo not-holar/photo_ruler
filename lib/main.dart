@@ -186,7 +186,7 @@ Point<double> rotatePoint(Point<double> point, num radians) {
 
 /// Rotates a [Rect] around (0, 0)
 List<Point<double>> rotateRect(Rect rect, num radians) {
-  return [rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight]
+  return [rect.topLeft, rect.topRight, rect.bottomRight, rect.bottomLeft]
       .map((point) => Point(point.dx, point.dy))
       .map((point) => rotatePoint(point, radians))
       .toList();
@@ -196,7 +196,7 @@ Path pathFromPoints(List<Point<double>> points) {
   final path = Path()..moveTo(points[0].x, points[0].y);
 
   for (final point in points.reversed) {
-    path.moveTo(point.x, point.y);
+    path.lineTo(point.x, point.y);
   }
 
   return path;
@@ -229,48 +229,35 @@ class ArrowPainter extends CustomPainter {
     final scaledStart = arrow.start * renderScale;
     final scaledEnd = arrow.end * renderScale;
 
-    final rect = Rect.fromLTWH(0, 0, 1, arrow.length * renderScale).inflate(4);
+    final rect = Rect.fromLTWH(0, 0, 0, arrow.length * renderScale).inflate(8);
 
     _hitTestPath = pathFromPoints(
-      rotateRect(rect, arrow.angle)
-          .map(
-            (point) => point + scaledStart,
-          )
-          .toList(),
-    );
-
-    print(rect);
-    print(rotateRect(rect, -arrow.angle));
-
-    print(
       rotateRect(rect, -arrow.angle)
           .map(
-            (point) => point + scaledStart,
+            (point) => scaledStart - point,
           )
           .toList(),
     );
 
-    canvas
-      ..drawPath(
-        _hitTestPath,
-        Paint()
-          ..style = PaintingStyle.fill
-          ..color = Colors.white70,
-      )
-      ..drawPath(
-        _hitTestPath,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..color = Colors.black87,
-      );
-
-    final line = Path()
-      ..moveTo(scaledStart.x, scaledStart.y)
-      ..lineTo(scaledEnd.x, scaledEnd.y);
+    // canvas
+    //   ..drawPath(
+    //     _hitTestPath,
+    //     Paint()
+    //       ..style = PaintingStyle.fill
+    //       ..color = Colors.white70,
+    //   )
+    //   ..drawPath(
+    //     _hitTestPath,
+    //     Paint()
+    //       ..style = PaintingStyle.stroke
+    //       ..strokeWidth = 2
+    //       ..color = Colors.black87,
+    //   );
 
     canvas.drawPath(
-      line,
+      Path()
+        ..moveTo(scaledStart.x, scaledStart.y)
+        ..lineTo(scaledEnd.x, scaledEnd.y),
       _arrowPaint,
     );
   }
