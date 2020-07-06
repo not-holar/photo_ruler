@@ -13,6 +13,11 @@ class RulerArrow {
     this.start,
     this.end,
   ) : length = start.distanceTo(end);
+
+  @override
+  String toString() {
+    return 'Ruler Arrow: start$start, end$end';
+  }
 }
 
 // class RulerList with ChangeNotifier {

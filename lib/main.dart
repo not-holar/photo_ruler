@@ -133,18 +133,18 @@ class RulerEditor extends StatefulWidget {
 class _RulerEditorState extends State<RulerEditor> {
   @override
   Widget build(BuildContext context) {
-    return Stack(children: [
-      Expanded(
-        child: Image.memory(
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.memory(
           widget.photo.bytes,
           filterQuality: FilterQuality.high,
         ),
-      ),
-      Expanded(
-        child: Builder(builder: (context) {
+        Builder(builder: (context) {
           final scale = context.watch<ValueNotifier<double>>().value;
 
           return Stack(
+            fit: StackFit.expand,
             children: context
                 .watch<ValueNotifier<List<RulerArrow>>>()
                 .value
@@ -156,8 +156,8 @@ class _RulerEditorState extends State<RulerEditor> {
                 .toList(),
           );
         }),
-      ),
-    ]);
+      ],
+    );
   }
 
   Widget arrowBuilder(int index, RulerArrow arrow, double scale) {
@@ -185,26 +185,57 @@ class ArrowPainter extends CustomPainter {
         assert(scale != null),
         assert(imageSize != null);
 
-  final arrowPaint = Paint()
+  final _arrowPaint = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 4.0
     ..color = Colors.indigo;
 
+  Path _hitTestPath;
+
   @override
   void paint(Canvas canvas, Size size) {
+    print(arrow);
+
     final renderScale = imageSize.width / size.width;
 
+    _hitTestPath = Path()
+      ..moveTo(
+        arrow.start.x * renderScale,
+        arrow.start.y * renderScale,
+      )
+      ..lineTo(
+        arrow.end.x * renderScale,
+        arrow.end.y * renderScale,
+      );
+
+    canvas
+      ..drawPath(
+        _hitTestPath,
+        Paint()
+          ..style = PaintingStyle.fill
+          ..color = Colors.white70,
+      )
+      ..drawPath(
+        _hitTestPath,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = Colors.black87,
+      );
+
+    final line = Path()
+      ..moveTo(
+        arrow.start.x * renderScale,
+        arrow.start.y * renderScale,
+      )
+      ..lineTo(
+        arrow.end.x * renderScale,
+        arrow.end.y * renderScale,
+      );
+
     canvas.drawPath(
-      Path()
-        ..moveTo(
-          arrow.start.x * renderScale,
-          arrow.start.y * renderScale,
-        )
-        ..lineTo(
-          arrow.end.x * renderScale,
-          arrow.end.y * renderScale,
-        ),
-      arrowPaint,
+      line,
+      _arrowPaint,
     );
   }
 
@@ -213,4 +244,13 @@ class ArrowPainter extends CustomPainter {
       arrow.start != oldDelegate.arrow.start ||
       arrow.end != oldDelegate.arrow.end ||
       scale != oldDelegate.scale;
+
+  @override
+  bool hitTest(Offset position) {
+    print(
+      (_hitTestPath != null) ? _hitTestPath.contains(position) : false,
+    );
+
+    return false;
+  }
 }
