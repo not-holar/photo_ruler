@@ -198,19 +198,24 @@ class _RulerEditorState extends State<RulerEditor> {
         ),
         GestureDetector(
           onDoubleTap: () {
-            if (controller.currentlyPlacingRuler == true) return;
+            if (controller.currentlyPlacingRuler) return;
+
             controller.currentlyPlacingRuler = true;
             final position = controller.cursorPosition;
-            rulerBeingPlaced = context
-                //
-                .read<RulerList>()
-                .add(Ruler(
-                  Line(position, position),
-                  unfinished: true,
-                ));
+            final list = context.read<RulerList>();
+
+            rulerBeingPlaced = list.add(
+              Ruler(
+                Line(position, position),
+                unfinished: true,
+              ),
+            );
+
+            context.read<ValueNotifier<int>>().value =
+                list.items.indexOf(rulerBeingPlaced);
           },
           onTap: () {
-            if (controller.currentlyPlacingRuler == true) {
+            if (controller.currentlyPlacingRuler) {
               controller.currentlyPlacingRuler = false;
               final position = controller.cursorPosition;
               rulerBeingPlaced.line.value = Line(
@@ -219,7 +224,7 @@ class _RulerEditorState extends State<RulerEditor> {
               );
               rulerBeingPlaced.unfinished = false;
             } else {
-              // TODO deselect arrow
+              context.read<ValueNotifier<int>>().value = null;
             }
           },
           child: CustomPaint(
@@ -232,6 +237,7 @@ class _RulerEditorState extends State<RulerEditor> {
         ),
         Builder(builder: (context) {
           final scale = context.watch<ValueNotifier<double>>().value;
+          final selectedRuler = context.watch<ValueNotifier<int>>();
 
           return Stack(
             fit: StackFit.expand,
@@ -241,7 +247,8 @@ class _RulerEditorState extends State<RulerEditor> {
                 .asMap()
                 .entries
                 .map(
-                  (arrow) => arrowBuilder(arrow.key, arrow.value, scale),
+                  (arrow) => arrowBuilder(
+                      arrow.key, arrow.value, scale, selectedRuler),
                 )
                 .toList(),
           );
@@ -254,10 +261,11 @@ class _RulerEditorState extends State<RulerEditor> {
     int index,
     Ruler ruler,
     double scale,
+    ValueNotifier<int> selectedRuler,
   ) {
     return GestureDetector(
       key: ValueKey(ruler),
-      onTap: () => print('yay'), // TODO select arrow
+      onTap: () => selectedRuler.value = index,
       child: ValueListenableBuilder<Line>(
         valueListenable: ruler.line,
         builder: (context, line, child) {
@@ -268,6 +276,7 @@ class _RulerEditorState extends State<RulerEditor> {
               line: line,
               scale: scale,
               imageSize: widget.photo.size,
+              selected: selectedRuler.value == index,
             ),
           );
         },
@@ -330,34 +339,50 @@ class EditorUtilityPainter extends CustomPainter {
   }
 }
 
+final _arrowPaints = [
+  Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 4.0
+    ..color = Colors.white
+    ..strokeCap = StrokeCap.round,
+  Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 3.0
+    ..color = Colors.indigo
+    ..strokeCap = StrokeCap.round,
+];
+
+final _selectedArrowPaints = [
+  Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 4.0
+    ..color = Colors.redAccent
+    ..strokeCap = StrokeCap.round,
+  Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.0
+    ..color = Colors.white
+    ..strokeCap = StrokeCap.round,
+];
+
 class ArrowPainter extends CustomPainter {
   final EditorController controller;
   final Line line;
   final double scale;
   final Size imageSize;
+  final bool selected;
 
   ArrowPainter({
     @required this.controller,
     @required this.line,
     @required this.scale,
     @required this.imageSize,
+    @required this.selected,
   })  : assert(controller != null),
         assert(line != null),
         assert(scale != null),
-        assert(imageSize != null);
-
-  final _arrowPaints = [
-    Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0
-      ..color = Colors.white
-      ..strokeCap = StrokeCap.round,
-    Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
-      ..color = Colors.indigo
-      ..strokeCap = StrokeCap.round,
-  ];
+        assert(imageSize != null),
+        assert(selected != null);
 
   Path _hitTestPath;
 
@@ -405,11 +430,8 @@ class ArrowPainter extends CustomPainter {
       ..moveTo(scaledStart.x, scaledStart.y)
       ..lineTo(scaledEnd.x, scaledEnd.y);
 
-    for (final paint in _arrowPaints) {
-      canvas.drawPath(
-        linePath,
-        paint,
-      );
+    for (final paint in selected ? _selectedArrowPaints : _arrowPaints) {
+      canvas.drawPath(linePath, paint);
     }
   }
 
@@ -417,7 +439,8 @@ class ArrowPainter extends CustomPainter {
   bool shouldRepaint(ArrowPainter oldDelegate) =>
       line.start != oldDelegate.line.start ||
       line.end != oldDelegate.line.end ||
-      scale != oldDelegate.scale;
+      scale != oldDelegate.scale ||
+      selected != oldDelegate.selected;
 
   @override
   bool hitTest(Offset position) =>
