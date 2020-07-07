@@ -32,7 +32,8 @@ class App extends StatelessWidget {
           create: (_) => ValueNotifier(null),
         ),
         ChangeNotifierProvider<RulerList>(
-          create: (_) => RulerList(),
+          create: (_) =>
+              RulerList()..add(RulerArrow(Point(10, 40), Point(400, 2000))),
         ),
       ],
       child: MaterialApp(
@@ -42,7 +43,12 @@ class App extends StatelessWidget {
           primarySwatch: Colors.grey,
           backgroundColor: Colors.grey.shade900,
           visualDensity: VisualDensity.adaptivePlatformDensity,
-          canvasColor: const Color(0xff121212),
+          // canvasColor: const Color(0xff121212),
+          canvasColor: Color.lerp(
+            Colors.black87,
+            Colors.grey.shade900,
+            .7,
+          ),
         ),
         home: Home(),
       ),
@@ -244,10 +250,18 @@ class ArrowPainter extends CustomPainter {
         assert(scale != null),
         assert(imageSize != null);
 
-  final _arrowPaint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 4.0
-    ..color = Colors.indigo;
+  final _arrowPaints = [
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..color = Colors.indigo
+      ..strokeCap = StrokeCap.round,
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..color = Colors.white
+      ..strokeCap = StrokeCap.round,
+  ];
 
   Path _hitTestPath;
 
@@ -268,7 +282,7 @@ class ArrowPainter extends CustomPainter {
           .toList(),
     );
 
-    // Draw hitbox
+    /// Draw hitbox
 
     // canvas
     //   ..drawPath(
@@ -285,12 +299,25 @@ class ArrowPainter extends CustomPainter {
     //       ..color = Colors.black87,
     //   );
 
-    canvas.drawPath(
-      Path()
-        ..moveTo(scaledStart.x, scaledStart.y)
-        ..lineTo(scaledEnd.x, scaledEnd.y),
-      _arrowPaint,
-    );
+    for (final paint in _arrowPaints) {
+      canvas
+          // ..drawCircle(
+          //   Offset(scaledStart.x, scaledStart.y),
+          //   0.00001,
+          //   paint,
+          // )
+          // ..drawCircle(
+          //   Offset(scaledEnd.x, scaledEnd.y),
+          //   0.00001,
+          //   paint,
+          // ).
+          .drawPath(
+        Path()
+          ..moveTo(scaledStart.x, scaledStart.y)
+          ..lineTo(scaledEnd.x, scaledEnd.y),
+        paint,
+      );
+    }
   }
 
   @override
