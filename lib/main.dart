@@ -64,6 +64,8 @@ class Home extends StatelessWidget {
         builder: (context, photo, _) {
           final _editorKey = GlobalKey();
 
+          final transformationController = TransformationController();
+
           if (photo.value == null) {
             return Center(
               child: RaisedButton.icon(
@@ -100,6 +102,7 @@ class Home extends StatelessWidget {
               child: InteractiveViewer(
                 maxScale: 100,
                 minScale: 0.0001,
+                transformationController: transformationController,
                 child: Center(
                   child: Padding(
                     padding: padding,
@@ -112,6 +115,7 @@ class Home extends StatelessWidget {
                         child: RulerEditor(
                           key: _editorKey,
                           photo: photo.value,
+                          transformationController: transformationController,
                         ),
                       ),
                     ),
@@ -160,14 +164,18 @@ class EditorController {
 
   /// Whether the user is currently placing a ruler
   bool currentlyPlacingRuler = false;
+
+  double hitBoxScale = 1.0;
 }
 
 class RulerEditor extends StatefulWidget {
   final Photo photo;
+  final TransformationController transformationController;
 
   const RulerEditor({
     Key key,
     this.photo,
+    this.transformationController,
   }) : super(key: key);
 
   @override
@@ -218,6 +226,7 @@ class _RulerEditorState extends State<RulerEditor> {
             painter: EditorUtilityPainter(
               controller: controller,
               imageSize: widget.photo.size,
+              transformationController: widget.transformationController,
             ),
           ),
         ),
@@ -296,16 +305,19 @@ Path pathFromPoints(List<Point<double>> points) {
 class EditorUtilityPainter extends CustomPainter {
   final EditorController controller;
   final Size imageSize;
+  final TransformationController transformationController;
 
   EditorUtilityPainter({
     @required this.controller,
     @required this.imageSize,
+    @required this.transformationController,
   })  : assert(controller != null),
         assert(imageSize != null);
 
   @override
   void paint(Canvas canvas, Size size) {
     controller.renderScale = size.width / imageSize.width;
+    controller.hitBoxScale = 1 / transformationController.value[0];
   }
 
   @override
@@ -356,7 +368,9 @@ class ArrowPainter extends CustomPainter {
     final scaledStart = line.start * renderScale;
     final scaledEnd = line.end * renderScale;
 
-    final hitBoxOffset = 8.0;
+    /// Decrease hitbox size as the user zooms in
+    /// should be at least as big as the line itself
+    final hitBoxOffset = max(8.0 * controller.hitBoxScale, 2.0);
 
     final rect =
         Rect.fromLTWH(0, 0, 0, line.length * renderScale).inflate(hitBoxOffset);
