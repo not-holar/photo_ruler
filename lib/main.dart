@@ -385,38 +385,29 @@ class ArrowPainter extends CustomPainter {
 
     /// Draw hitbox
 
-    canvas
-      ..drawPath(
-        _hitTestPath,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.square
-          ..strokeWidth = 2
-          ..color = Colors.black87,
-      )
-      ..drawPath(
-        _hitTestPath,
-        Paint()
-          ..style = PaintingStyle.fill
-          ..color = Colors.white70,
-      );
+    // canvas
+    //   ..drawPath(
+    //     _hitTestPath,
+    //     Paint()
+    //       ..style = PaintingStyle.stroke
+    //       ..strokeCap = StrokeCap.square
+    //       ..strokeWidth = 2
+    //       ..color = Colors.black87,
+    //   )
+    //   ..drawPath(
+    //     _hitTestPath,
+    //     Paint()
+    //       ..style = PaintingStyle.fill
+    //       ..color = Colors.white70,
+    //   );
+
+    final linePath = Path()
+      ..moveTo(scaledStart.x, scaledStart.y)
+      ..lineTo(scaledEnd.x, scaledEnd.y);
 
     for (final paint in _arrowPaints) {
-      canvas
-          // ..drawCircle(
-          //   Offset(scaledStart.x, scaledStart.y),
-          //   0.00001,
-          //   paint,
-          // )
-          // ..drawCircle(
-          //   Offset(scaledEnd.x, scaledEnd.y),
-          //   0.00001,
-          //   paint,
-          // ).
-          .drawPath(
-        Path()
-          ..moveTo(scaledStart.x, scaledStart.y)
-          ..lineTo(scaledEnd.x, scaledEnd.y),
+      canvas.drawPath(
+        linePath,
         paint,
       );
     }
