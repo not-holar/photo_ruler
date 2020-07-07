@@ -20,36 +20,36 @@ void main() {
 class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider<ValueNotifier<Photo>>(
-          create: (_) => ValueNotifier(null),
+    return MaterialApp(
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.grey,
+        backgroundColor: Colors.grey.shade900,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+        // canvasColor: const Color(0xff121212),
+        canvasColor: Color.lerp(
+          Colors.black87,
+          Colors.grey.shade900,
+          .7,
         ),
-        ChangeNotifierProvider<ValueNotifier<double>>(
-          create: (_) => ValueNotifier(1.0),
-        ),
-        ChangeNotifierProvider<ValueNotifier<int>>(
-          create: (_) => ValueNotifier(null),
-        ),
-        ChangeNotifierProvider<RulerList>(
-          create: (_) => RulerList(),
-        ),
-      ],
-      child: MaterialApp(
-        title: 'Flutter Demo',
-        theme: ThemeData(
-          brightness: Brightness.dark,
-          primarySwatch: Colors.grey,
-          backgroundColor: Colors.grey.shade900,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-          // canvasColor: const Color(0xff121212),
-          canvasColor: Color.lerp(
-            Colors.black87,
-            Colors.grey.shade900,
-            .7,
+      ),
+      home: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ValueNotifier<Photo>>(
+            create: (_) => ValueNotifier(null),
           ),
-        ),
-        home: Home(),
+          ChangeNotifierProvider<ValueNotifier<double>>(
+            create: (_) => ValueNotifier(1.0),
+          ),
+          ChangeNotifierProvider<ValueNotifier<int>>(
+            create: (_) => ValueNotifier(null),
+          ),
+          ChangeNotifierProvider<RulerList>(
+            create: (_) => RulerList(),
+          ),
+        ],
+        child: Home(),
       ),
     );
   }
@@ -157,12 +157,18 @@ class EditorController {
 
   /// Scaling from Image size to Canvas size
   double renderScale = 1.0;
+
+  /// Whether the user is currently placing a ruler
+  bool currentlyPlacingRuler = false;
 }
 
 class RulerEditor extends StatefulWidget {
   final Photo photo;
 
-  const RulerEditor({Key key, this.photo}) : super(key: key);
+  const RulerEditor({
+    Key key,
+    this.photo,
+  }) : super(key: key);
 
   @override
   _RulerEditorState createState() => _RulerEditorState();
@@ -171,8 +177,7 @@ class RulerEditor extends StatefulWidget {
 class _RulerEditorState extends State<RulerEditor> {
   final controller = EditorController();
 
-  bool placingRuler = false;
-  ValueNotifier<RulerArrow> rulerBeingPlaced;
+  Ruler rulerBeingPlaced;
 
   @override
   Widget build(BuildContext context) {
@@ -185,18 +190,26 @@ class _RulerEditorState extends State<RulerEditor> {
         ),
         GestureDetector(
           onDoubleTap: () {
-            if (placingRuler == true) return;
-            placingRuler = true;
+            if (controller.currentlyPlacingRuler == true) return;
+            controller.currentlyPlacingRuler = true;
             final position = controller.cursorPosition;
-            rulerBeingPlaced =
-                context.read<RulerList>().add(RulerArrow(position, position));
+            rulerBeingPlaced = context
+                //
+                .read<RulerList>()
+                .add(Ruler(
+                  Line(position, position),
+                  unfinished: true,
+                ));
           },
           onTap: () {
-            if (placingRuler == true) {
-              placingRuler = false;
+            if (controller.currentlyPlacingRuler == true) {
+              controller.currentlyPlacingRuler = false;
               final position = controller.cursorPosition;
-              rulerBeingPlaced.value =
-                  RulerArrow(rulerBeingPlaced.value.start, position);
+              rulerBeingPlaced.line.value = Line(
+                rulerBeingPlaced.line.value.start,
+                position,
+              );
+              rulerBeingPlaced.unfinished = false;
             } else {
               // TODO deselect arrow
             }
@@ -230,20 +243,20 @@ class _RulerEditorState extends State<RulerEditor> {
 
   Widget arrowBuilder(
     int index,
-    ValueNotifier<RulerArrow> arrow,
+    Ruler ruler,
     double scale,
   ) {
     return GestureDetector(
-      key: ValueKey(arrow),
+      key: ValueKey(ruler),
       onTap: () => print('yay'), // TODO select arrow
-      child: ValueListenableBuilder(
-        key: ValueKey(arrow),
-        valueListenable: arrow,
-        builder: (context, RulerArrow arrow, _) {
+      child: ValueListenableBuilder<Line>(
+        valueListenable: ruler.line,
+        builder: (context, line, child) {
           return CustomPaint(
-            key: ValueKey(arrow),
+            key: ValueKey(ruler),
             painter: ArrowPainter(
-              arrow: arrow,
+              controller: controller,
+              line: line,
               scale: scale,
               imageSize: widget.photo.size,
             ),
@@ -306,15 +319,18 @@ class EditorUtilityPainter extends CustomPainter {
 }
 
 class ArrowPainter extends CustomPainter {
-  final RulerArrow arrow;
+  final EditorController controller;
+  final Line line;
   final double scale;
   final Size imageSize;
 
   ArrowPainter({
-    @required this.arrow,
+    @required this.controller,
+    @required this.line,
     @required this.scale,
     @required this.imageSize,
-  })  : assert(arrow != null),
+  })  : assert(controller != null),
+        assert(line != null),
         assert(scale != null),
         assert(imageSize != null);
 
@@ -337,13 +353,16 @@ class ArrowPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final renderScale = size.width / imageSize.width;
 
-    final scaledStart = arrow.start * renderScale;
-    final scaledEnd = arrow.end * renderScale;
+    final scaledStart = line.start * renderScale;
+    final scaledEnd = line.end * renderScale;
 
-    final rect = Rect.fromLTWH(0, 0, 0, arrow.length * renderScale).inflate(8);
+    final hitBoxOffset = 8.0;
+
+    final rect =
+        Rect.fromLTWH(0, 0, 0, line.length * renderScale).inflate(hitBoxOffset);
 
     _hitTestPath = pathFromPoints(
-      rotateRect(rect, -arrow.angle)
+      rotateRect(rect, -line.angle)
           .map(
             (point) => scaledStart - point,
           )
@@ -352,20 +371,21 @@ class ArrowPainter extends CustomPainter {
 
     /// Draw hitbox
 
-    // canvas
-    //   ..drawPath(
-    //     _hitTestPath,
-    //     Paint()
-    //       ..style = PaintingStyle.fill
-    //       ..color = Colors.white70,
-    //   )
-    //   ..drawPath(
-    //     _hitTestPath,
-    //     Paint()
-    //       ..style = PaintingStyle.stroke
-    //       ..strokeWidth = 2
-    //       ..color = Colors.black87,
-    //   );
+    canvas
+      ..drawPath(
+        _hitTestPath,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.square
+          ..strokeWidth = 2
+          ..color = Colors.black87,
+      )
+      ..drawPath(
+        _hitTestPath,
+        Paint()
+          ..style = PaintingStyle.fill
+          ..color = Colors.white70,
+      );
 
     for (final paint in _arrowPaints) {
       canvas
@@ -390,11 +410,13 @@ class ArrowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(ArrowPainter oldDelegate) =>
-      arrow.start != oldDelegate.arrow.start ||
-      arrow.end != oldDelegate.arrow.end ||
+      line.start != oldDelegate.line.start ||
+      line.end != oldDelegate.line.end ||
       scale != oldDelegate.scale;
 
   @override
   bool hitTest(Offset position) =>
-      (_hitTestPath != null) && _hitTestPath.contains(position);
+      !controller.currentlyPlacingRuler &&
+      (_hitTestPath != null) &&
+      _hitTestPath.contains(position);
 }

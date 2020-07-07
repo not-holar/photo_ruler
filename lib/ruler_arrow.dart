@@ -3,14 +3,14 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
-class RulerArrow {
+class Line {
   final Point<double> start;
   final Point<double> end;
 
   final double length;
   final double angle;
 
-  RulerArrow(
+  Line(
     this.start,
     this.end,
   )   : length = start.distanceTo(end),
@@ -18,8 +18,21 @@ class RulerArrow {
 
   @override
   String toString() {
-    return 'Ruler Arrow: start$start, end$end';
+    return 'Line: start$start, end$end';
   }
+}
+
+class Ruler {
+  final ValueNotifier<Line> line;
+
+  bool unfinished;
+
+  Ruler(
+    Line _line, {
+    this.unfinished = false,
+  })  : line = ValueNotifier(_line),
+        assert(_line != null),
+        assert(unfinished != null);
 }
 
 double angleBetween(Point<double> start, Point<double> end) {
@@ -28,13 +41,12 @@ double angleBetween(Point<double> start, Point<double> end) {
 }
 
 class RulerList with ChangeNotifier {
-  final List<ValueNotifier<RulerArrow>> _items = [];
+  final List<Ruler> _items = [];
 
-  UnmodifiableListView<ValueNotifier<RulerArrow>> get items =>
-      UnmodifiableListView(_items);
+  UnmodifiableListView<Ruler> get items => UnmodifiableListView(_items);
 
-  ValueNotifier<RulerArrow> add(RulerArrow value) {
-    final result = ValueNotifier(value);
+  Ruler add(Ruler value) {
+    final result = value;
     _items.add(result);
     notifyListeners();
     return result;
