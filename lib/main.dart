@@ -32,8 +32,7 @@ class App extends StatelessWidget {
           create: (_) => ValueNotifier(null),
         ),
         ChangeNotifierProvider<RulerList>(
-          create: (_) =>
-              RulerList()..add(RulerArrow(Point(10, 40), Point(400, 2000))),
+          create: (_) => RulerList(),
         ),
       ],
       child: MaterialApp(
@@ -146,6 +145,20 @@ class Home extends StatelessWidget {
   }
 }
 
+class EditorController {
+  /// Cursor position in terms of Photo size
+  Point<double> get cursorPosition => Point(
+        cursorPositionCanvas.x / renderScale,
+        cursorPositionCanvas.y / renderScale,
+      );
+
+  /// Cursor position in terms of Canvas size
+  Point<double> cursorPositionCanvas = const Point(0, 0);
+
+  /// Scaling from Image size to Canvas size
+  double renderScale = 1.0;
+}
+
 class RulerEditor extends StatefulWidget {
   final Photo photo;
 
@@ -156,6 +169,11 @@ class RulerEditor extends StatefulWidget {
 }
 
 class _RulerEditorState extends State<RulerEditor> {
+  final controller = EditorController();
+
+  bool placingRuler = false;
+  ValueNotifier<RulerArrow> rulerBeingPlaced;
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -164,6 +182,31 @@ class _RulerEditorState extends State<RulerEditor> {
         Image.memory(
           widget.photo.bytes,
           filterQuality: FilterQuality.high,
+        ),
+        GestureDetector(
+          onDoubleTap: () {
+            if (placingRuler == true) return;
+            placingRuler = true;
+            final position = controller.cursorPosition;
+            rulerBeingPlaced =
+                context.read<RulerList>().add(RulerArrow(position, position));
+          },
+          onTap: () {
+            if (placingRuler == true) {
+              placingRuler = false;
+              final position = controller.cursorPosition;
+              rulerBeingPlaced.value =
+                  RulerArrow(rulerBeingPlaced.value.start, position);
+            } else {
+              // TODO deselect arrow
+            }
+          },
+          child: CustomPaint(
+            painter: EditorUtilityPainter(
+              controller: controller,
+              imageSize: widget.photo.size,
+            ),
+          ),
         ),
         Builder(builder: (context) {
           final scale = context.watch<ValueNotifier<double>>().value;
@@ -191,14 +234,14 @@ class _RulerEditorState extends State<RulerEditor> {
     double scale,
   ) {
     return GestureDetector(
-      key: ValueKey(index),
-      onTap: () => print('yay'),
+      key: ValueKey(arrow),
+      onTap: () => print('yay'), // TODO select arrow
       child: ValueListenableBuilder(
-        key: ValueKey(index),
+        key: ValueKey(arrow),
         valueListenable: arrow,
         builder: (context, RulerArrow arrow, _) {
           return CustomPaint(
-            key: ValueKey(index),
+            key: ValueKey(arrow),
             painter: ArrowPainter(
               arrow: arrow,
               scale: scale,
@@ -237,6 +280,31 @@ Path pathFromPoints(List<Point<double>> points) {
   return path;
 }
 
+class EditorUtilityPainter extends CustomPainter {
+  final EditorController controller;
+  final Size imageSize;
+
+  EditorUtilityPainter({
+    @required this.controller,
+    @required this.imageSize,
+  })  : assert(controller != null),
+        assert(imageSize != null);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    controller.renderScale = size.width / imageSize.width;
+  }
+
+  @override
+  bool shouldRepaint(ArrowPainter oldDelegate) => false;
+
+  @override
+  bool hitTest(Offset position) {
+    controller.cursorPositionCanvas = Point(position.dx, position.dy);
+    return true;
+  }
+}
+
 class ArrowPainter extends CustomPainter {
   final RulerArrow arrow;
   final double scale;
@@ -254,12 +322,12 @@ class ArrowPainter extends CustomPainter {
     Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4.0
-      ..color = Colors.indigo
+      ..color = Colors.white
       ..strokeCap = StrokeCap.round,
     Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0
-      ..color = Colors.white
+      ..color = Colors.indigo
       ..strokeCap = StrokeCap.round,
   ];
 

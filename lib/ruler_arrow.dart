@@ -33,9 +33,11 @@ class RulerList with ChangeNotifier {
   UnmodifiableListView<ValueNotifier<RulerArrow>> get items =>
       UnmodifiableListView(_items);
 
-  void add(RulerArrow value) {
-    _items.add(ValueNotifier(value));
+  ValueNotifier<RulerArrow> add(RulerArrow value) {
+    final result = ValueNotifier(value);
+    _items.add(result);
     notifyListeners();
+    return result;
   }
 
   void remove(int index) {
