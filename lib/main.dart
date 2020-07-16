@@ -1,9 +1,11 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:filepicker_windows/filepicker_windows.dart';
 // import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:number_inc_dec/number_inc_dec.dart';
 import 'package:provider/provider.dart';
 
 import 'photo.dart';
@@ -23,6 +25,8 @@ class App extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
+        splashFactory: InkRipple.splashFactory,
+        highlightColor: Colors.transparent,
         brightness: Brightness.dark,
         primarySwatch: Colors.grey,
         backgroundColor: Colors.grey.shade900,
@@ -123,29 +127,247 @@ class Home extends StatelessWidget {
                 ),
               ),
             ),
-            Material(
-              color: Theme.of(context).canvasColor,
-              elevation: 20,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                child: Builder(builder: (context) {
-                  return Row(children: [
-                    IconButton(
-                      onPressed: () {
-                        final rulers = context.read<RulerList>();
-                        // TODO
-                      },
-                      icon: const Icon(Icons.delete_outline),
-                    )
-                  ]);
-                }),
+            ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: const EditorPanel(),
               ),
             ),
           ]);
         },
       ),
     );
+  }
+}
+
+class EditorPanel extends StatelessWidget {
+  const EditorPanel({
+    Key key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).canvasColor,
+      elevation: 20,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 32,
+          vertical: 12,
+        ),
+        child: Builder(builder: (context) {
+          final rulers = context.watch<RulerList>();
+          final selectedRuler = context.watch<ValueNotifier<int>>();
+
+          final disabled = selectedRuler.value == null;
+
+          return AnimatedOpacity(
+            opacity: disabled ? .3 : 1,
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeInOut,
+            child: IgnorePointer(
+              ignoring: disabled,
+              child: Row(children: [
+                IconButton(
+                  onPressed: () {
+                    selectedRuler.value = null;
+                  },
+                  icon: const Icon(Icons.close),
+                ),
+                Expanded(
+                  child: disabled
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            EditorPointInputPlaceholder(),
+                            SizedBox(width: 5),
+                            EditorPointInputPlaceholder(),
+                            SizedBox(
+                              height: 40,
+                              child: VerticalDivider(width: 40),
+                            ),
+                            EditorPointInputPlaceholder(),
+                            SizedBox(width: 5),
+                            EditorPointInputPlaceholder(),
+                          ],
+                        )
+                      : ValueListenableBuilder<Line>(
+                          valueListenable:
+                              rulers.items[selectedRuler.value].line,
+                          builder: (context, line, _) {
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 120,
+                                  child: EditorPointInput(
+                                    key: ValueKey(selectedRuler.value),
+                                    onChange: (value) {
+                                      rulers.items[selectedRuler.value].line
+                                          .value = Line(
+                                        Point(value, line.start.y),
+                                        line.end,
+                                      );
+                                    },
+                                    initialValue: line.start.x,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                SizedBox(
+                                  width: 120,
+                                  child: EditorPointInput(
+                                    key: ValueKey(selectedRuler.value),
+                                    onChange: (value) {
+                                      rulers.items[selectedRuler.value].line
+                                          .value = Line(
+                                        Point(line.start.x, value),
+                                        line.end,
+                                      );
+                                    },
+                                    initialValue: line.start.y,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  height: 40,
+                                  child: VerticalDivider(width: 40),
+                                ),
+                                SizedBox(
+                                  width: 120,
+                                  child: EditorPointInput(
+                                    key: ValueKey(selectedRuler.value),
+                                    onChange: (value) {
+                                      rulers.items[selectedRuler.value].line
+                                          .value = Line(
+                                        line.start,
+                                        Point(value, line.end.y),
+                                      );
+                                    },
+                                    initialValue: line.end.x,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                SizedBox(
+                                  width: 120,
+                                  child: EditorPointInput(
+                                    key: ValueKey(selectedRuler.value),
+                                    onChange: (value) {
+                                      rulers.items[selectedRuler.value].line
+                                          .value = Line(
+                                        line.start,
+                                        Point(line.end.x, value),
+                                      );
+                                    },
+                                    initialValue: line.end.y,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    rulers.remove(selectedRuler.value);
+                    selectedRuler.value = null;
+                  },
+                  icon: const Icon(Icons.delete_outline),
+                ),
+              ]),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class EditorPointInputPlaceholder extends StatelessWidget {
+  const EditorPointInputPlaceholder({
+    Key key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        border: const Border(),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      width: 120,
+      height: 40,
+    );
+  }
+}
+
+class EditorPointInput extends StatefulWidget {
+  final void Function(double value) onChange;
+  final double initialValue;
+
+  const EditorPointInput({
+    Key key,
+    @required this.onChange,
+    @required this.initialValue,
+  }) : super(key: key);
+
+  @override
+  _EditorPointInputState createState() => _EditorPointInputState();
+}
+
+class _EditorPointInputState extends State<EditorPointInput> {
+  final TextEditingController controller = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return NumberInputWithIncrementDecrement(
+      controller: controller,
+      min: double.negativeInfinity,
+      isInt: false,
+      widgetContainerDecoration: BoxDecoration(
+        color: Colors.black26,
+        border: const Border(),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      numberFieldDecoration: const InputDecoration(
+        isDense: true,
+        border: InputBorder.none,
+        fillColor: Colors.black12,
+      ),
+      incIconDecoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(width: 8, color: Colors.transparent),
+          top: BorderSide(width: 4, color: Colors.transparent),
+        ),
+      ),
+      decIconDecoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(width: 8, color: Colors.transparent),
+          bottom: BorderSide(width: 4, color: Colors.transparent),
+        ),
+      ),
+      incIcon: Icons.keyboard_arrow_up,
+      decIcon: Icons.keyboard_arrow_down,
+      incIconSize: 16,
+      decIconSize: 16,
+      initialValue: widget.initialValue,
+    );
+  }
+
+  @override
+  void initState() {
+    if (widget.onChange != null) {
+      controller.addListener(() {
+        widget.onChange(double.tryParse(controller.text));
+      });
+    }
+
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 }
 
