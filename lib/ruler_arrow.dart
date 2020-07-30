@@ -50,8 +50,8 @@ class RulerList extends StateNotifier<List<Ruler>> {
 
     final newRuler = Ruler(
       unfinished
-          ? Line(Point(x1, y1), Point(x2, y2))
-          : Line(Point(x1, y1), Point(x1, y1)),
+          ? Line(Point(x1, y1), Point(x1, y1))
+          : Line(Point(x1, y1), Point(x2, y2)),
       unfinished: unfinished,
     );
 
