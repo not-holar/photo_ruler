@@ -122,7 +122,7 @@ class Home extends StatelessWidget {
           ),
           ClipRect(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
               child: const EditorPanel(),
             ),
           ),
