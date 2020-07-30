@@ -141,14 +141,6 @@ final unselectedProvider = Computed(
 
 final sizingScaleProvider = StateProvider((ref) => 1.0);
 
-final Computed<List<double>> lengthsProvider = Computed((read) {
-  final scale = read(sizingScaleProvider).state;
-  return read(rulerListProvider.state)
-      .map((ruler) => ruler.line.value.length)
-      .map((length) => length * scale)
-      .toList();
-});
-
 class EditorPanel extends StatelessWidget {
   const EditorPanel({
     Key key,
@@ -189,8 +181,7 @@ class EditorPanel extends StatelessWidget {
                     final rulers = read(rulerListProvider.state);
                     final selectedRuler = read(selectedRulerProvider);
 
-                    final selectedRulerLength =
-                        read(lengthsProvider)[selectedRuler.state];
+                    final scale = read(sizingScaleProvider).state;
 
                     return ValueListenableBuilder(
                       valueListenable: rulers[selectedRuler.state].line,
@@ -209,7 +200,7 @@ class EditorPanel extends StatelessWidget {
                                   sizingScaleProvider.read(context).state =
                                       value / line.length;
                                 },
-                                initialValue: selectedRulerLength,
+                                initialValue: line.length * scale,
                               ),
                             ),
                             const SizedBox(width: 50),
@@ -474,19 +465,68 @@ class _RulerEditorState extends State<RulerEditor> {
           ),
         ),
         Consumer((context, read) {
-          final scale = read(sizingScaleProvider).state;
-
+          final rulers = read(rulerListProvider.state);
           return Stack(
             fit: StackFit.expand,
-            children: read(rulerListProvider.state)
-                .asMap()
-                .entries
-                .map(
-                  (arrow) => arrowBuilder(arrow.key, arrow.value, scale),
-                )
-                .toList(),
+            children: rulers.asMap().entries.map(
+              (arrow) {
+                return arrowBuilder(arrow.key, arrow.value);
+              },
+            ).toList(),
           );
         }),
+        IgnorePointer(
+          child: Consumer((context, read) {
+            final rulers = read(rulerListProvider.state);
+            final scale = read(sizingScaleProvider).state;
+
+            return Stack(
+              children: rulers.asMap().entries.map((arrow) {
+                return ValueListenableBuilder<Line>(
+                  valueListenable: arrow.value.line,
+                  builder: (context, line, child) {
+                    final rect = Rect.fromPoints(
+                      Offset(line.start.x, line.start.y) *
+                          controller.renderScale,
+                      Offset(line.end.x, line.end.y) * controller.renderScale,
+                    );
+
+                    final angle = (((-line.angle) / pi) % 1) - .5;
+
+                    return SizedBox(
+                      width: 100,
+                      height: 20,
+                      child: Transform.translate(
+                        offset: Offset(
+                          rect.left + rect.width / 2 - 50,
+                          rect.top + rect.height / 2 - 10,
+                        ),
+                        child: Transform.rotate(
+                          angle: angle * pi,
+                          // alignment: Alignment.bottomCenter,
+                          // origin: const Offset(25, 5),
+                          child: Text(
+                            (line.length * scale).toString(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              // color: Colors.black,
+                              shadows: [
+                                BoxShadow(
+                                  // color: Colors.white,
+                                  blurRadius: 2,
+                                )
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }).toList(),
+            );
+          }),
+        ),
       ],
     );
   }
@@ -494,28 +534,28 @@ class _RulerEditorState extends State<RulerEditor> {
   Widget arrowBuilder(
     int index,
     Ruler ruler,
-    double scale,
   ) {
-    return GestureDetector(
-      key: ValueKey(ruler),
-      onTap: () => selectedRulerProvider.read(context).state = index,
-      child: ValueListenableBuilder<Line>(
-        valueListenable: ruler.line,
-        builder: (context, line, child) {
-          return Consumer((context, read) {
-            return CustomPaint(
+    return ValueListenableBuilder<Line>(
+      valueListenable: ruler.line,
+      builder: (context, line, child) {
+        return Positioned.fill(
+          child: Consumer((context, read) {
+            return GestureDetector(
               key: ValueKey(ruler),
-              painter: ArrowPainter(
-                controller: controller,
-                line: line,
-                scale: scale,
-                imageSize: widget.photo.size,
-                selected: read(selectedRulerProvider).state == index,
+              onTap: () => selectedRulerProvider.read(context).state = index,
+              child: CustomPaint(
+                key: ValueKey(ruler),
+                painter: ArrowPainter(
+                  controller: controller,
+                  line: line,
+                  imageSize: widget.photo.size,
+                  selected: read(selectedRulerProvider).state == index,
+                ),
               ),
             );
-          });
-        },
-      ),
+          }),
+        );
+      },
     );
   }
 }
@@ -603,19 +643,16 @@ final _selectedArrowPaints = [
 class ArrowPainter extends CustomPainter {
   final EditorController controller;
   final Line line;
-  final double scale;
   final Size imageSize;
   final bool selected;
 
   ArrowPainter({
     @required this.controller,
     @required this.line,
-    @required this.scale,
     @required this.imageSize,
     @required this.selected,
   })  : assert(controller != null),
         assert(line != null),
-        assert(scale != null),
         assert(imageSize != null),
         assert(selected != null);
 
@@ -674,7 +711,6 @@ class ArrowPainter extends CustomPainter {
   bool shouldRepaint(ArrowPainter oldDelegate) =>
       line.start != oldDelegate.line.start ||
       line.end != oldDelegate.line.end ||
-      scale != oldDelegate.scale ||
       selected != oldDelegate.selected;
 
   @override
