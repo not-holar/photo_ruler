@@ -138,6 +138,8 @@ final unselectedProvider = Computed(
   (read) => read(selectedRulerProvider).state == null,
 );
 
+final sizingScale = StateProvider((ref) => 1.0);
+
 class EditorPanel extends StatelessWidget {
   const EditorPanel({
     Key key,
@@ -422,17 +424,13 @@ class _RulerEditorState extends State<RulerEditor> {
 
             controller.currentlyPlacingRuler = true;
             final position = controller.cursorPosition;
-            final list = context.read<RulerList>();
 
-            rulerBeingPlaced = list.add(
-              Ruler(
-                Line(position, position),
-                unfinished: true,
-              ),
-            );
+            rulerBeingPlaced = rulerListProvider
+                .read(context)
+                .add(position.x, position.y, null, null);
 
-            context.read<ValueNotifier<int>>().value =
-                list.items.indexOf(rulerBeingPlaced);
+            selectedRulerProvider.read(context).state =
+                rulerListProvider.state.read(context).indexOf(rulerBeingPlaced);
           },
           onTap: () {
             if (controller.currentlyPlacingRuler) {
@@ -444,7 +442,7 @@ class _RulerEditorState extends State<RulerEditor> {
               );
               rulerBeingPlaced.unfinished = false;
             } else {
-              context.read<ValueNotifier<int>>().value = null;
+              selectedRulerProvider.read(context).state = null;
             }
           },
           child: CustomPaint(
@@ -455,20 +453,16 @@ class _RulerEditorState extends State<RulerEditor> {
             ),
           ),
         ),
-        Builder(builder: (context) {
-          final scale = context.watch<ValueNotifier<double>>().value;
-          final selectedRuler = context.watch<ValueNotifier<int>>();
+        Consumer((context, read) {
+          final scale = read(sizingScale).state;
 
           return Stack(
             fit: StackFit.expand,
-            children: context
-                .watch<RulerList>()
-                .items
+            children: read(rulerListProvider.state)
                 .asMap()
                 .entries
                 .map(
-                  (arrow) => arrowBuilder(
-                      arrow.key, arrow.value, scale, selectedRuler),
+                  (arrow) => arrowBuilder(arrow.key, arrow.value, scale),
                 )
                 .toList(),
           );
@@ -481,24 +475,25 @@ class _RulerEditorState extends State<RulerEditor> {
     int index,
     Ruler ruler,
     double scale,
-    ValueNotifier<int> selectedRuler,
   ) {
     return GestureDetector(
       key: ValueKey(ruler),
-      onTap: () => selectedRuler.state = index,
+      onTap: () => selectedRulerProvider.read(context).state = index,
       child: ValueListenableBuilder<Line>(
         valueListenable: ruler.line,
         builder: (context, line, child) {
-          return CustomPaint(
-            key: ValueKey(ruler),
-            painter: ArrowPainter(
-              controller: controller,
-              line: line,
-              scale: scale,
-              imageSize: widget.photo.size,
-              selected: selectedRuler.state == index,
-            ),
-          );
+          return Consumer((context, read) {
+            return CustomPaint(
+              key: ValueKey(ruler),
+              painter: ArrowPainter(
+                controller: controller,
+                line: line,
+                scale: scale,
+                imageSize: widget.photo.size,
+                selected: read(selectedRulerProvider).state == index,
+              ),
+            );
+          });
         },
       ),
     );

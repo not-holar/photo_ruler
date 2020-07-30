@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:state_notifier/state_notifier.dart';
 
 double angleBetween(Point<double> start, Point<double> end) {
@@ -46,18 +45,19 @@ class Ruler {
 class RulerList extends StateNotifier<List<Ruler>> {
   RulerList([List<Ruler> initialRulers]) : super(initialRulers ?? []);
 
-  void add(double x1, double y1, double x2, double y2) {
+  Ruler add(double x1, double y1, double x2, double y2) {
     final unfinished = (x2 == null) || (y2 == null);
 
-    state = [
-      ...state,
-      Ruler(
-        unfinished
-            ? Line(Point(x1, y1), Point(x2, y2))
-            : Line(Point(x1, y1), Point(x1, y1)),
-        unfinished: unfinished,
-      )
-    ];
+    final newRuler = Ruler(
+      unfinished
+          ? Line(Point(x1, y1), Point(x2, y2))
+          : Line(Point(x1, y1), Point(x1, y1)),
+      unfinished: unfinished,
+    );
+
+    state = [...state, newRuler];
+
+    return newRuler;
   }
 
   void remove(int index) {
