@@ -25,6 +25,7 @@ dependencies:
     sdk: flutter
   
   filepicker_windows: ^0.1.2
+  material_design_icons_flutter: ^4.0.5345
 
   flutter_riverpod: ^0.5.1
 
