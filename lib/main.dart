@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'dart:ui';
+import 'dart:ui' as ui;
 
 import 'package:filepicker_windows/filepicker_windows.dart';
 // import 'package:flutter/gestures.dart';
