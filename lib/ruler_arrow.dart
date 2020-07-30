@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:state_notifier/state_notifier.dart';
 
@@ -28,14 +29,14 @@ class Line {
 }
 
 class Ruler {
-  final StateController<Line> line;
+  final ValueNotifier<Line> line;
 
   bool unfinished;
 
   Ruler(
     Line _line, {
     this.unfinished = false,
-  })  : line = StateController(_line),
+  })  : line = ValueNotifier(_line),
         assert(_line != null),
         assert(unfinished != null);
 }

@@ -189,82 +189,84 @@ class EditorPanel extends StatelessWidget {
                       );
                     }
 
-                    final rulers = read(rulerListProvider);
+                    final rulers = read(rulerListProvider.state);
                     final selectedRuler = read(selectedRulerProvider);
 
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 120,
-                          child: EditorPointInput(
-                            key: ValueKey(selectedRuler.state),
-                            onChange: (value) {
-                              rulers.state[selectedRuler.state].line.state =
-                                  Line(
-                                Point(value, line.start.y),
-                                line.end,
-                              );
-                            },
-                            initialValue: line.start.x,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        SizedBox(
-                          width: 120,
-                          child: EditorPointInput(
-                            key: ValueKey(selectedRuler.state),
-                            onChange: (value) {
-                              rulers.items[selectedRuler.state].line.value =
-                                  Line(
-                                Point(line.start.x, value),
-                                line.end,
-                              );
-                            },
-                            initialValue: line.start.y,
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 40,
-                          child: VerticalDivider(width: 40),
-                        ),
-                        SizedBox(
-                          width: 120,
-                          child: EditorPointInput(
-                            key: ValueKey(selectedRuler.state),
-                            onChange: (value) {
-                              rulers.items[selectedRuler.state].line.value =
-                                  Line(
-                                line.start,
-                                Point(value, line.end.y),
-                              );
-                            },
-                            initialValue: line.end.x,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        SizedBox(
-                          width: 120,
-                          child: EditorPointInput(
-                            key: ValueKey(selectedRuler.state),
-                            onChange: (value) {
-                              rulers.items[selectedRuler.state].line.value =
-                                  Line(
-                                line.start,
-                                Point(line.end.x, value),
-                              );
-                            },
-                            initialValue: line.end.y,
-                          ),
-                        ),
-                      ],
+                    return ValueListenableBuilder(
+                      valueListenable: rulers[selectedRuler.state].line,
+                      builder: (context, Line line, child) {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 120,
+                              child: EditorPointInput(
+                                key: ValueKey(selectedRuler.state),
+                                onChange: (value) {
+                                  rulers[selectedRuler.state].line.value = Line(
+                                    Point(value, line.start.y),
+                                    line.end,
+                                  );
+                                },
+                                initialValue: line.start.x,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            SizedBox(
+                              width: 120,
+                              child: EditorPointInput(
+                                key: ValueKey(selectedRuler.state),
+                                onChange: (value) {
+                                  rulers[selectedRuler.state].line.value = Line(
+                                    Point(line.start.x, value),
+                                    line.end,
+                                  );
+                                },
+                                initialValue: line.start.y,
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 40,
+                              child: VerticalDivider(width: 40),
+                            ),
+                            SizedBox(
+                              width: 120,
+                              child: EditorPointInput(
+                                key: ValueKey(selectedRuler.state),
+                                onChange: (value) {
+                                  rulers[selectedRuler.state].line.value = Line(
+                                    line.start,
+                                    Point(value, line.end.y),
+                                  );
+                                },
+                                initialValue: line.end.x,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            SizedBox(
+                              width: 120,
+                              child: EditorPointInput(
+                                key: ValueKey(selectedRuler.state),
+                                onChange: (value) {
+                                  rulers[selectedRuler.state].line.value = Line(
+                                    line.start,
+                                    Point(line.end.x, value),
+                                  );
+                                },
+                                initialValue: line.end.y,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     );
                   }),
                 ),
                 IconButton(
                   onPressed: () {
-                    rulers.remove(selectedRuler.state);
-                    selectedRuler.state = null;
+                    final sel = selectedRulerProvider.read(context);
+                    rulerListProvider.read(context).remove(sel.state);
+                    sel.state = null;
                   },
                   icon: const Icon(Icons.delete_outline),
                 ),
