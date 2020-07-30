@@ -174,7 +174,7 @@ class EditorPanel extends StatelessWidget {
                 Expanded(
                   child: Consumer((context, read) {
                     if (disabled) {
-                      return SizedBox.shrink();
+                      return const SizedBox.shrink();
                     }
 
                     final rulers = read(rulerListProvider.state);
