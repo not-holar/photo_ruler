@@ -174,21 +174,7 @@ class EditorPanel extends StatelessWidget {
                 Expanded(
                   child: Consumer((context, read) {
                     if (disabled) {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          EditorPointInputPlaceholder(),
-                          SizedBox(width: 5),
-                          EditorPointInputPlaceholder(),
-                          SizedBox(
-                            height: 40,
-                            child: VerticalDivider(width: 40),
-                          ),
-                          EditorPointInputPlaceholder(),
-                          SizedBox(width: 5),
-                          EditorPointInputPlaceholder(),
-                        ],
-                      );
+                      return SizedBox.shrink();
                     }
 
                     final rulers = read(rulerListProvider.state);
