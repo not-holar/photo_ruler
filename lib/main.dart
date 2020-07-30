@@ -139,7 +139,15 @@ final unselectedProvider = Computed(
   (read) => read(selectedRulerProvider).state == null,
 );
 
-final sizingScale = StateProvider((ref) => 1.0);
+final sizingScaleProvider = StateProvider((ref) => 1.0);
+
+final Computed<List<double>> lengthsProvider = Computed((read) {
+  final scale = read(sizingScaleProvider).state;
+  return read(rulerListProvider.state)
+      .map((ruler) => ruler.line.value.length)
+      .map((length) => length * scale)
+      .toList();
+});
 
 class EditorPanel extends StatelessWidget {
   const EditorPanel({
@@ -181,12 +189,30 @@ class EditorPanel extends StatelessWidget {
                     final rulers = read(rulerListProvider.state);
                     final selectedRuler = read(selectedRulerProvider);
 
+                    final selectedRulerLength =
+                        read(lengthsProvider)[selectedRuler.state];
+
                     return ValueListenableBuilder(
                       valueListenable: rulers[selectedRuler.state].line,
                       builder: (context, Line line, child) {
                         return Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            const Icon(MdiIcons.ruler),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: 120,
+                              child: EditorPointInput(
+                                key: ValueKey(selectedRuler.state),
+                                onChange: (value) {
+                                  if (value < 1e-10) return;
+                                  sizingScaleProvider.read(context).state =
+                                      value / line.length;
+                                },
+                                initialValue: selectedRulerLength,
+                              ),
+                            ),
+                            const SizedBox(width: 50),
                             Transform.rotate(
                               angle: -pi / 4,
                               child: const Icon(MdiIcons.rayStart),
@@ -448,7 +474,7 @@ class _RulerEditorState extends State<RulerEditor> {
           ),
         ),
         Consumer((context, read) {
-          final scale = read(sizingScale).state;
+          final scale = read(sizingScaleProvider).state;
 
           return Stack(
             fit: StackFit.expand,
