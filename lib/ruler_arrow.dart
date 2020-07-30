@@ -1,7 +1,12 @@
-import 'dart:collection';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:state_notifier/state_notifier.dart';
+
+double angleBetween(Point<double> start, Point<double> end) {
+  final relative = start - end;
+  return atan2(relative.x, relative.y);
+}
 
 class Line {
   final Point<double> start;
@@ -23,37 +28,40 @@ class Line {
 }
 
 class Ruler {
-  final ValueNotifier<Line> line;
+  final StateController<Line> line;
 
   bool unfinished;
 
   Ruler(
     Line _line, {
     this.unfinished = false,
-  })  : line = ValueNotifier(_line),
+  })  : line = StateController(_line),
         assert(_line != null),
         assert(unfinished != null);
 }
 
-double angleBetween(Point<double> start, Point<double> end) {
-  final relative = start - end;
-  return atan2(relative.x, relative.y);
-}
+/// An object that controls a list of [Ruler].
 
-class RulerList with ChangeNotifier {
-  final List<Ruler> _items = [];
+class RulerList extends StateNotifier<List<Ruler>> {
+  RulerList([List<Ruler> initialRulers]) : super(initialRulers ?? []);
 
-  UnmodifiableListView<Ruler> get items => UnmodifiableListView(_items);
+  void add(double x1, double y1, double x2, double y2) {
+    final unfinished = (x2 == null) || (y2 == null);
 
-  Ruler add(Ruler value) {
-    final result = value;
-    _items.add(result);
-    notifyListeners();
-    return result;
+    state = [
+      ...state,
+      Ruler(
+        unfinished
+            ? Line(Point(x1, y1), Point(x2, y2))
+            : Line(Point(x1, y1), Point(x1, y1)),
+        unfinished: unfinished,
+      )
+    ];
   }
 
   void remove(int index) {
-    _items.removeAt(index);
-    notifyListeners();
+    final newState = state;
+    newState.removeAt(index);
+    state = newState;
   }
 }

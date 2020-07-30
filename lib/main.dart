@@ -5,8 +5,9 @@ import 'package:filepicker_windows/filepicker_windows.dart';
 // import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:number_inc_dec/number_inc_dec.dart';
-import 'package:provider/provider.dart';
+// import 'package:provider/provider.dart';
 
 import 'photo.dart';
 import 'ruler_arrow.dart';
@@ -16,7 +17,11 @@ void main() {
   //   debugPrint = (String message, {int wrapWidth}) {};
   // }
 
-  runApp(App());
+  runApp(
+    ProviderScope(
+      child: App(),
+    ),
+  );
 }
 
 class App extends StatelessWidget {
@@ -38,107 +43,100 @@ class App extends StatelessWidget {
           .7,
         ),
       ),
-      home: MultiProvider(
-        providers: [
-          ChangeNotifierProvider<ValueNotifier<Photo>>(
-            create: (_) => ValueNotifier(null),
-          ),
-          ChangeNotifierProvider<ValueNotifier<double>>(
-            create: (_) => ValueNotifier(1.0),
-          ),
-          ChangeNotifierProvider<ValueNotifier<int>>(
-            create: (_) => ValueNotifier(null),
-          ),
-          ChangeNotifierProvider<RulerList>(
-            create: (_) => RulerList(),
-          ),
-        ],
-        child: Home(),
-      ),
+      home: Home(),
     );
   }
 }
+
+final photoProvider = StateProvider<Photo>((ref) => null);
 
 class Home extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).backgroundColor,
-      body: Consumer<ValueNotifier<Photo>>(
-        builder: (context, photo, _) {
-          final _editorKey = GlobalKey();
+      body: Consumer((context, read) {
+        final photo = read(photoProvider).state;
 
-          final transformationController = TransformationController();
+        if (photo == null) {
+          return Center(
+            child: RaisedButton.icon(
+              onPressed: () async {
+                final picker = FilePicker();
+                picker.title = 'Select an image';
+                picker.filterSpecification = {'All Files (*.*)': '*.*'};
 
-          if (photo.value == null) {
-            return Center(
-              child: RaisedButton.icon(
-                onPressed: () async {
-                  final picker = FilePicker();
-                  picker.title = 'Select an image';
-                  picker.filterSpecification = {'All Files (*.*)': '*.*'};
+                final file = picker.getFile();
 
-                  final file = picker.getFile();
+                if (file == null) return;
 
-                  if (file == null) return;
-
-                  photo.value = await Photo.fromList(
-                    await file.readAsBytes(),
-                  );
-                },
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 20,
-                ),
-                icon: const Icon(Icons.photo),
-                label: const Text(
-                  "Open Image",
-                  textScaleFactor: 1.2,
-                ),
+                photoProvider.read(context).state = await Photo.fromList(
+                  await file.readAsBytes(),
+                );
+              },
+              padding: const EdgeInsets.symmetric(
+                horizontal: 32,
+                vertical: 20,
               ),
-            );
-          }
+              icon: const Icon(Icons.photo),
+              label: const Text(
+                "Open Image",
+                textScaleFactor: 1.2,
+              ),
+            ),
+          );
+        }
 
-          const padding = EdgeInsets.all(20.0);
+        const padding = EdgeInsets.all(20.0);
 
-          return Column(children: [
-            Expanded(
-              child: InteractiveViewer(
-                maxScale: 100,
-                minScale: 0.0001,
-                transformationController: transformationController,
-                child: Center(
-                  child: Padding(
-                    padding: padding,
-                    child: Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.zero,
-                      elevation: 12,
-                      child: AspectRatio(
-                        aspectRatio: photo.value.size.aspectRatio,
-                        child: RulerEditor(
-                          key: _editorKey,
-                          photo: photo.value,
-                          transformationController: transformationController,
-                        ),
+        final _editorKey = GlobalKey();
+
+        final transformationController = TransformationController();
+
+        return Column(children: [
+          Expanded(
+            child: InteractiveViewer(
+              maxScale: 100,
+              minScale: 0.0001,
+              transformationController: transformationController,
+              child: Center(
+                child: Padding(
+                  padding: padding,
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.zero,
+                    elevation: 12,
+                    child: AspectRatio(
+                      aspectRatio: photo.size.aspectRatio,
+                      child: RulerEditor(
+                        key: _editorKey,
+                        photo: photo,
+                        transformationController: transformationController,
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-            ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                child: const EditorPanel(),
-              ),
+          ),
+          ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: const EditorPanel(),
             ),
-          ]);
-        },
-      ),
+          ),
+        ]);
+      }),
     );
   }
 }
+
+final rulerListProvider = StateNotifierProvider((ref) => RulerList());
+final selectedRulerProvider = StateProvider<int>((ref) => null);
+
+final unselectedProvider = Computed(
+  (read) => read(selectedRulerProvider).state == null,
+);
 
 class EditorPanel extends StatelessWidget {
   const EditorPanel({
@@ -155,11 +153,8 @@ class EditorPanel extends StatelessWidget {
           horizontal: 32,
           vertical: 12,
         ),
-        child: Builder(builder: (context) {
-          final rulers = context.watch<RulerList>();
-          final selectedRuler = context.watch<ValueNotifier<int>>();
-
-          final disabled = selectedRuler.value == null;
+        child: Consumer((context, read) {
+          final disabled = read(unselectedProvider);
 
           return AnimatedOpacity(
             opacity: disabled ? .3 : 1,
@@ -170,105 +165,106 @@ class EditorPanel extends StatelessWidget {
               child: Row(children: [
                 IconButton(
                   onPressed: () {
-                    selectedRuler.value = null;
+                    selectedRulerProvider.read(context).state = null;
                   },
                   icon: const Icon(Icons.close),
                 ),
                 Expanded(
-                  child: disabled
-                      ? Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            EditorPointInputPlaceholder(),
-                            SizedBox(width: 5),
-                            EditorPointInputPlaceholder(),
-                            SizedBox(
-                              height: 40,
-                              child: VerticalDivider(width: 40),
-                            ),
-                            EditorPointInputPlaceholder(),
-                            SizedBox(width: 5),
-                            EditorPointInputPlaceholder(),
-                          ],
-                        )
-                      : ValueListenableBuilder<Line>(
-                          valueListenable:
-                              rulers.items[selectedRuler.value].line,
-                          builder: (context, line, _) {
-                            return Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 120,
-                                  child: EditorPointInput(
-                                    key: ValueKey(selectedRuler.value),
-                                    onChange: (value) {
-                                      rulers.items[selectedRuler.value].line
-                                          .value = Line(
-                                        Point(value, line.start.y),
-                                        line.end,
-                                      );
-                                    },
-                                    initialValue: line.start.x,
-                                  ),
-                                ),
-                                const SizedBox(width: 5),
-                                SizedBox(
-                                  width: 120,
-                                  child: EditorPointInput(
-                                    key: ValueKey(selectedRuler.value),
-                                    onChange: (value) {
-                                      rulers.items[selectedRuler.value].line
-                                          .value = Line(
-                                        Point(line.start.x, value),
-                                        line.end,
-                                      );
-                                    },
-                                    initialValue: line.start.y,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  height: 40,
-                                  child: VerticalDivider(width: 40),
-                                ),
-                                SizedBox(
-                                  width: 120,
-                                  child: EditorPointInput(
-                                    key: ValueKey(selectedRuler.value),
-                                    onChange: (value) {
-                                      rulers.items[selectedRuler.value].line
-                                          .value = Line(
-                                        line.start,
-                                        Point(value, line.end.y),
-                                      );
-                                    },
-                                    initialValue: line.end.x,
-                                  ),
-                                ),
-                                const SizedBox(width: 5),
-                                SizedBox(
-                                  width: 120,
-                                  child: EditorPointInput(
-                                    key: ValueKey(selectedRuler.value),
-                                    onChange: (value) {
-                                      rulers.items[selectedRuler.value].line
-                                          .value = Line(
-                                        line.start,
-                                        Point(line.end.x, value),
-                                      );
-                                    },
-                                    initialValue: line.end.y,
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                  child: Consumer((context, read) {
+                    if (disabled) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          EditorPointInputPlaceholder(),
+                          SizedBox(width: 5),
+                          EditorPointInputPlaceholder(),
+                          SizedBox(
+                            height: 40,
+                            child: VerticalDivider(width: 40),
+                          ),
+                          EditorPointInputPlaceholder(),
+                          SizedBox(width: 5),
+                          EditorPointInputPlaceholder(),
+                        ],
+                      );
+                    }
+
+                    final rulers = read(rulerListProvider);
+                    final selectedRuler = read(selectedRulerProvider);
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 120,
+                          child: EditorPointInput(
+                            key: ValueKey(selectedRuler.state),
+                            onChange: (value) {
+                              rulers.state[selectedRuler.state].line.state =
+                                  Line(
+                                Point(value, line.start.y),
+                                line.end,
+                              );
+                            },
+                            initialValue: line.start.x,
+                          ),
                         ),
+                        const SizedBox(width: 5),
+                        SizedBox(
+                          width: 120,
+                          child: EditorPointInput(
+                            key: ValueKey(selectedRuler.state),
+                            onChange: (value) {
+                              rulers.items[selectedRuler.state].line.value =
+                                  Line(
+                                Point(line.start.x, value),
+                                line.end,
+                              );
+                            },
+                            initialValue: line.start.y,
+                          ),
+                        ),
+                        const SizedBox(
+                          height: 40,
+                          child: VerticalDivider(width: 40),
+                        ),
+                        SizedBox(
+                          width: 120,
+                          child: EditorPointInput(
+                            key: ValueKey(selectedRuler.state),
+                            onChange: (value) {
+                              rulers.items[selectedRuler.state].line.value =
+                                  Line(
+                                line.start,
+                                Point(value, line.end.y),
+                              );
+                            },
+                            initialValue: line.end.x,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        SizedBox(
+                          width: 120,
+                          child: EditorPointInput(
+                            key: ValueKey(selectedRuler.state),
+                            onChange: (value) {
+                              rulers.items[selectedRuler.state].line.value =
+                                  Line(
+                                line.start,
+                                Point(line.end.x, value),
+                              );
+                            },
+                            initialValue: line.end.y,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                 ),
                 IconButton(
                   onPressed: () {
-                    rulers.remove(selectedRuler.value);
-                    selectedRuler.value = null;
+                    rulers.remove(selectedRuler.state);
+                    selectedRuler.state = null;
                   },
                   icon: const Icon(Icons.delete_outline),
                 ),
@@ -487,7 +483,7 @@ class _RulerEditorState extends State<RulerEditor> {
   ) {
     return GestureDetector(
       key: ValueKey(ruler),
-      onTap: () => selectedRuler.value = index,
+      onTap: () => selectedRuler.state = index,
       child: ValueListenableBuilder<Line>(
         valueListenable: ruler.line,
         builder: (context, line, child) {
@@ -498,7 +494,7 @@ class _RulerEditorState extends State<RulerEditor> {
               line: line,
               scale: scale,
               imageSize: widget.photo.size,
-              selected: selectedRuler.value == index,
+              selected: selectedRuler.state == index,
             ),
           );
         },
