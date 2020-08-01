@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-import 'package:number_inc_dec/number_inc_dec.dart';
+import 'package:photo_ruler/number_picker.dart';
 // import 'package:provider/provider.dart';
 
 import 'photo.dart';
@@ -191,17 +191,13 @@ class EditorPanel extends StatelessWidget {
                           children: [
                             const Icon(MdiIcons.ruler),
                             const SizedBox(width: 10),
-                            SizedBox(
-                              width: 120,
-                              child: EditorPointInput(
-                                key: ValueKey(selectedRuler.state),
-                                onChange: (value) {
-                                  if (value < 1e-10) return;
-                                  sizingScaleProvider.read(context).state =
-                                      value / line.length;
-                                },
-                                initialValue: line.length * scale,
-                              ),
+                            PanelNumberInput(
+                              onChange: (value) {
+                                if (value < 1e-10) return;
+                                sizingScaleProvider.read(context).state =
+                                    value / line.length;
+                              },
+                              initialValue: line.length * scale,
                             ),
                             const SizedBox(width: 50),
                             Transform.rotate(
@@ -209,32 +205,24 @@ class EditorPanel extends StatelessWidget {
                               child: const Icon(MdiIcons.rayStart),
                             ),
                             const SizedBox(width: 10),
-                            SizedBox(
-                              width: 120,
-                              child: EditorPointInput(
-                                key: ValueKey(selectedRuler.state),
-                                onChange: (value) {
-                                  rulers[selectedRuler.state].line.value = Line(
-                                    Point(value, line.start.y),
-                                    line.end,
-                                  );
-                                },
-                                initialValue: line.start.x,
-                              ),
+                            PanelNumberInput(
+                              onChange: (value) {
+                                rulers[selectedRuler.state].line.value = Line(
+                                  Point(value, line.start.y),
+                                  line.end,
+                                );
+                              },
+                              initialValue: line.start.x,
                             ),
                             const SizedBox(width: 5),
-                            SizedBox(
-                              width: 120,
-                              child: EditorPointInput(
-                                key: ValueKey(selectedRuler.state),
-                                onChange: (value) {
-                                  rulers[selectedRuler.state].line.value = Line(
-                                    Point(line.start.x, value),
-                                    line.end,
-                                  );
-                                },
-                                initialValue: line.start.y,
-                              ),
+                            PanelNumberInput(
+                              onChange: (value) {
+                                rulers[selectedRuler.state].line.value = Line(
+                                  Point(line.start.x, value),
+                                  line.end,
+                                );
+                              },
+                              initialValue: line.start.y,
                             ),
                             const SizedBox(width: 30),
                             Transform.rotate(
@@ -242,32 +230,24 @@ class EditorPanel extends StatelessWidget {
                               child: const Icon(MdiIcons.rayEnd),
                             ),
                             const SizedBox(width: 10),
-                            SizedBox(
-                              width: 120,
-                              child: EditorPointInput(
-                                key: ValueKey(selectedRuler.state),
-                                onChange: (value) {
-                                  rulers[selectedRuler.state].line.value = Line(
-                                    line.start,
-                                    Point(value, line.end.y),
-                                  );
-                                },
-                                initialValue: line.end.x,
-                              ),
+                            PanelNumberInput(
+                              onChange: (value) {
+                                rulers[selectedRuler.state].line.value = Line(
+                                  line.start,
+                                  Point(value, line.end.y),
+                                );
+                              },
+                              initialValue: line.end.x,
                             ),
                             const SizedBox(width: 5),
-                            SizedBox(
-                              width: 120,
-                              child: EditorPointInput(
-                                key: ValueKey(selectedRuler.state),
-                                onChange: (value) {
-                                  rulers[selectedRuler.state].line.value = Line(
-                                    line.start,
-                                    Point(line.end.x, value),
-                                  );
-                                },
-                                initialValue: line.end.y,
-                              ),
+                            PanelNumberInput(
+                              onChange: (value) {
+                                rulers[selectedRuler.state].line.value = Line(
+                                  line.start,
+                                  Point(line.end.x, value),
+                                );
+                              },
+                              initialValue: line.end.y,
                             ),
                           ],
                         );
@@ -292,93 +272,24 @@ class EditorPanel extends StatelessWidget {
   }
 }
 
-class EditorPointInputPlaceholder extends StatelessWidget {
-  const EditorPointInputPlaceholder({
-    Key key,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black26,
-        border: const Border(),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      width: 120,
-      height: 40,
-    );
-  }
-}
-
-class EditorPointInput extends StatefulWidget {
+class PanelNumberInput extends StatelessWidget {
   final void Function(double value) onChange;
   final double initialValue;
 
-  const EditorPointInput({
+  const PanelNumberInput({
     Key key,
     @required this.onChange,
     @required this.initialValue,
   }) : super(key: key);
 
   @override
-  _EditorPointInputState createState() => _EditorPointInputState();
-}
-
-class _EditorPointInputState extends State<EditorPointInput> {
-  final TextEditingController controller = TextEditingController();
-
-  @override
   Widget build(BuildContext context) {
-    return NumberInputWithIncrementDecrement(
-      controller: controller,
-      min: double.negativeInfinity,
-      isInt: false,
-      widgetContainerDecoration: BoxDecoration(
-        color: Colors.black26,
-        border: const Border(),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      numberFieldDecoration: const InputDecoration(
-        isDense: true,
-        border: InputBorder.none,
-        fillColor: Colors.black12,
-      ),
-      incIconDecoration: const BoxDecoration(
-        border: Border(
-          right: BorderSide(width: 8, color: Colors.transparent),
-          top: BorderSide(width: 4, color: Colors.transparent),
-        ),
-      ),
-      decIconDecoration: const BoxDecoration(
-        border: Border(
-          right: BorderSide(width: 8, color: Colors.transparent),
-          bottom: BorderSide(width: 4, color: Colors.transparent),
-        ),
-      ),
-      incIcon: Icons.keyboard_arrow_up,
-      decIcon: Icons.keyboard_arrow_down,
-      incIconSize: 16,
-      decIconSize: 16,
-      initialValue: widget.initialValue,
+    return NumberPicker(
+      color: Colors.black26,
+      width: 120,
+      onChange: onChange,
+      initialNumber: initialValue,
     );
-  }
-
-  @override
-  void initState() {
-    if (widget.onChange != null) {
-      controller.addListener(() {
-        widget.onChange(double.tryParse(controller.text));
-      });
-    }
-
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
   }
 }
 
