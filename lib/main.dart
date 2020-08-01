@@ -506,7 +506,8 @@ class _RulerEditorState extends State<RulerEditor> {
                           // alignment: Alignment.bottomCenter,
                           // origin: const Offset(25, 5),
                           child: Text(
-                            (line.length * scale).toString(),
+                            (line.length * scale).toStringAsFixed(2),
+                            // (line.length * scale).toString(),
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               // color: Colors.black,
